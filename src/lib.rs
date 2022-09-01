@@ -2,9 +2,9 @@ use crate::deposit_item_data::DepositItemData;
 use crate::stone_box_data::StoneBoxData;
 use crate::xorshift::XorShift;
 
-pub mod xorshift;
-mod stone_box_data;
 mod deposit_item_data;
+mod stone_box_data;
+pub mod xorshift;
 
 const STONE_BOX_DATA_RAW: &str = include_str!("../StoneBoxRawData.json");
 const DEPOSIT_ITEM_DATA_RAW: &str = include_str!("../DepositItemRawData.json");
@@ -38,7 +38,12 @@ fn rotate_right(original: &Vec<u8>, height: usize, width: usize) -> (Vec<u8>, us
     (new, width, height)
 }
 
-fn rotate_right_multiple(original: &Vec<u8>, mut height: usize, mut width: usize, count: i32) -> Vec<u8> {
+fn rotate_right_multiple(
+    original: &Vec<u8>,
+    mut height: usize,
+    mut width: usize,
+    count: i32,
+) -> Vec<u8> {
     let mut new = original.clone();
     for _ in 0..count {
         let (rotated, new_height, new_width) = rotate_right(&new, height, width);
@@ -49,7 +54,18 @@ fn rotate_right_multiple(original: &Vec<u8>, mut height: usize, mut width: usize
     new
 }
 
-pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleared: bool, national_dex: bool, initial_advances: usize, max_advances: usize) -> Vec<(Vec<(u32, u32, u32, usize, usize, Vec<u8>)>, [[char; 13]; 10])> {
+pub fn run_results(
+    version: Version,
+    mut rng: XorShift,
+    diglett: bool,
+    sp_cleared: bool,
+    national_dex: bool,
+    initial_advances: usize,
+    max_advances: usize,
+) -> Vec<(
+    Vec<(u32, u32, u32, usize, usize, Vec<u8>)>,
+    [[char; 13]; 10],
+)> {
     let mut results = Vec::with_capacity(max_advances);
 
     if initial_advances > 0 {
@@ -64,28 +80,35 @@ pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleare
     deposit_item_data.deposit.iter().for_each(|d| {
         let height = d.shape.split('.').count() - 1;
         let width = d.shape.split('.').next().unwrap().len();
-        let shape: Vec<u8> = d.shape.as_bytes().iter().filter_map(|&b| if b == b'.' { None } else {
-            Some(b)
-        }).collect();
+        let shape: Vec<u8> = d
+            .shape
+            .as_bytes()
+            .iter()
+            .filter_map(|&b| if b == b'.' { None } else { Some(b) })
+            .collect();
 
         let rate = match version {
-            Version::BD => if national_dex {
-                d.ratio3
-            } else if sp_cleared {
-                d.ratio2
-            } else {
-                d.ratio1
-            },
-            Version::SP => if national_dex {
-                d.ratio6
-            } else if sp_cleared {
-                d.ratio5
-            } else {
-                d.ratio4
-            },
+            Version::BD => {
+                if national_dex {
+                    d.ratio3
+                } else if sp_cleared {
+                    d.ratio2
+                } else {
+                    d.ratio1
+                }
+            }
+            Version::SP => {
+                if national_dex {
+                    d.ratio6
+                } else if sp_cleared {
+                    d.ratio5
+                } else {
+                    d.ratio4
+                }
+            }
         };
 
-        let ratio =  if d.turn > 0 {
+        let ratio = if d.turn > 0 {
             rate / (d.turn + 1)
         } else {
             rate
@@ -96,7 +119,7 @@ pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleare
             ratio,
             width,
             height,
-            shape: shape.clone()
+            shape: shape.clone(),
         });
 
         if d.turn > 0 {
@@ -104,17 +127,9 @@ pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleare
                 deposit_items.push(DepositItem {
                     item_id,
                     ratio,
-                    width: if i % 2 == 1 {
-                        height
-                    } else {
-                        width
-                    },
-                    height: if i % 2 == 1 {
-                        width
-                    } else {
-                        height
-                    },
-                    shape: rotate_right_multiple(&shape, height, width, i)
+                    width: if i % 2 == 1 { height } else { width },
+                    height: if i % 2 == 1 { width } else { height },
+                    shape: rotate_right_multiple(&shape, height, width, i),
                 });
             }
         }
@@ -133,7 +148,11 @@ pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleare
 
         let mut box_type = 0;
         let mut box_id = 0;
-        let stone_box_rand_max = stone_box_data.r#box.iter().map(|b| if diglett { b.ratio2 } else { b.ratio1 }).sum::<i32>();
+        let stone_box_rand_max = stone_box_data
+            .r#box
+            .iter()
+            .map(|b| if diglett { b.ratio2 } else { b.ratio1 })
+            .sum::<i32>();
         if diglett || clone.rand_range(0, 100) < 50 {
             let mut statue_box_rand = clone.rand_range(0, stone_box_rand_max as u32) as i32;
             for b in &stone_box_data.r#box {
@@ -178,7 +197,10 @@ pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleare
                 }
                 let x = clone.rand_range(0, 0xd);
                 let y = clone.rand_range(0, 10);
-                if x + width as u32 <= 0xd && y + height as u32 <= 10 && !overlaps(&map, x, y, width, height, &shape) {
+                if x + width as u32 <= 0xd
+                    && y + height as u32 <= 10
+                    && !overlaps(&map, x, y, width, height, &shape)
+                {
                     item_count -= 1;
                     place_item(&mut map, x, y, width, height, &shape, character);
                     character += 1;
@@ -194,7 +216,14 @@ pub fn run_results(version: Version, mut rng: XorShift, diglett: bool, sp_cleare
     results
 }
 
-fn overlaps(map: &[[char; 13]; 10], x: u32, y: u32, width: usize, height: usize, shape: &[u8]) -> bool {
+fn overlaps(
+    map: &[[char; 13]; 10],
+    x: u32,
+    y: u32,
+    width: usize,
+    height: usize,
+    shape: &[u8],
+) -> bool {
     for i in y..(y + height as u32) {
         for j in x..(x + width as u32) {
             if shape[((j - x) as usize) + ((i - y) as usize) * width] == b'x' {
@@ -207,7 +236,15 @@ fn overlaps(map: &[[char; 13]; 10], x: u32, y: u32, width: usize, height: usize,
     false
 }
 
-fn place_item(map: &mut [[char; 13]; 10], x: u32, y: u32, width: usize, height: usize, shape: &[u8], character: u8) {
+fn place_item(
+    map: &mut [[char; 13]; 10],
+    x: u32,
+    y: u32,
+    width: usize,
+    height: usize,
+    shape: &[u8],
+    character: u8,
+) {
     for i in y..(y + height as u32) {
         for j in x..(x + width as u32) {
             if shape[((j - x) as usize) + ((i - y) as usize) * width] == b'x' {
