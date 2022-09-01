@@ -136,7 +136,7 @@ pub fn run_results(
         }
     });
 
-    for _ in 0..max_advances {
+    for _ in 0..=max_advances {
         let mut character = b'A';
         let mut map = [['#'; 13]; 10];
         let mut clone = rng;

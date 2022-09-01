@@ -7,8 +7,8 @@ pub struct ItemName {
 
 #[derive(Serialize, Deserialize)]
 pub struct Item {
-    #[serde(rename = "labelIndex")]
-    pub label_index: i32,
+    #[serde(rename = "arrayIndex")]
+    pub array_index: i32,
     #[serde(rename = "wordDataArray")]
     pub word_data_array: Vec<ItemName>,
 }

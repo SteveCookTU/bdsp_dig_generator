@@ -49,8 +49,8 @@ struct Cli {
 enum Subcommands {
     Map,
     Results {
-        #[clap(
-            help = "Item ID to filter for. Box IDs are 1000 + (type_id * 10) + rarity. rarity is 1 for pretty and 2 for gorgeous"
+        #[clap(short, long,
+            help = "Underground Item ID to filter for. Box IDs are 1000 + (type_id * 10) + rarity. rarity is 1 for pretty and 2 for gorgeous"
         )]
         item_id: Option<u32>,
     },
@@ -101,7 +101,7 @@ fn main() {
                 cli.sp_cleared,
                 cli.national_dex,
                 cli.advances,
-                1,
+                0,
             );
             for ch in result.first().unwrap().1 {
                 println!("{}", ch.iter().collect::<String>());
@@ -119,7 +119,7 @@ fn main() {
                         &item_name_ug
                             .label_data_array
                             .iter()
-                            .find(|f| f.label_index == item_id.ug_item_id)
+                            .find(|f| f.array_index == item_id.ug_item_id)
                             .unwrap()
                             .word_data_array
                             .first()
@@ -129,7 +129,7 @@ fn main() {
                         &item_name
                             .label_data_array
                             .iter()
-                            .find(|f| f.label_index == item_id.item_table_id)
+                            .find(|f| f.array_index == item_id.item_table_id)
                             .unwrap()
                             .word_data_array
                             .first()
@@ -181,34 +181,48 @@ fn main() {
                 }
                 println!("Advances: {i}");
                 for item in result {
-                    let item_id = ug_item_table
-                        .table
-                        .iter()
-                        .find(|i| i.ug_item_id == item.0 as i32)
-                        .unwrap();
-                    let item_name = if item_id.item_table_id == -1 {
-                        &item_name_ug
-                            .label_data_array
+                    if item.0 < 1000 {
+                        let item_id = ug_item_table
+                            .table
                             .iter()
-                            .find(|f| f.label_index == item_id.ug_item_id)
-                            .unwrap()
-                            .word_data_array
-                            .first()
-                            .unwrap()
-                            .str
+                            .find(|i| i.ug_item_id == item.0 as i32)
+                            .unwrap();
+                        let item_name = if item_id.item_table_id == -1 {
+                            &item_name_ug
+                                .label_data_array
+                                .iter()
+                                .find(|f| f.array_index == item_id.ug_item_id)
+                                .unwrap()
+                                .word_data_array
+                                .first()
+                                .unwrap()
+                                .str
+                        } else {
+                            &item_name
+                                .label_data_array
+                                .iter()
+                                .find(|f| f.array_index == item_id.item_table_id)
+                                .unwrap()
+                                .word_data_array
+                                .first()
+                                .unwrap()
+                                .str
+                        };
+                        println!("Item: {} @ ({},{})", item_name, item.1, item.2);
                     } else {
-                        &item_name
-                            .label_data_array
-                            .iter()
-                            .find(|f| f.label_index == item_id.item_table_id)
-                            .unwrap()
-                            .word_data_array
-                            .first()
-                            .unwrap()
-                            .str
-                    };
-
-                    println!("Item: {} @ ({},{})", item_name, item.1, item.2);
+                        let id = (item.0 % 1000) / 10;
+                        let box_type = match item.0 % 10 {
+                            1 => "Pretty",
+                            _ => "Gorgeous",
+                        };
+                        println!(
+                            "{} Stone Box: {} @ ({},{})",
+                            box_type,
+                            types[id as usize],
+                            item.1,
+                            item.2
+                        );
+                    }
                 }
                 println!()
             }
