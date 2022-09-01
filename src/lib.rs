@@ -39,12 +39,12 @@ fn rotate_right(original: &Vec<u8>, height: usize, width: usize) -> (Vec<u8>, us
 }
 
 fn rotate_right_multiple(
-    original: &Vec<u8>,
+    original: &[u8],
     mut height: usize,
     mut width: usize,
     count: i32,
 ) -> Vec<u8> {
-    let mut new = original.clone();
+    let mut new = original.to_owned();
     for _ in 0..count {
         let (rotated, new_height, new_width) = rotate_right(&new, height, width);
         new = rotated;
@@ -54,6 +54,7 @@ fn rotate_right_multiple(
     new
 }
 
+#[allow(clippy::type_complexity)]
 pub fn run_results(
     version: Version,
     mut rng: XorShift,
@@ -226,10 +227,10 @@ fn overlaps(
 ) -> bool {
     for i in y..(y + height as u32) {
         for j in x..(x + width as u32) {
-            if shape[((j - x) as usize) + ((i - y) as usize) * width] == b'x' {
-                if map[i as usize][j as usize] != '#' {
-                    return true;
-                }
+            if shape[((j - x) as usize) + ((i - y) as usize) * width] == b'x'
+                && map[i as usize][j as usize] != '#'
+            {
+                return true;
             }
         }
     }

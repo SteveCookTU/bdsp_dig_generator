@@ -1,9 +1,35 @@
+mod item_name;
+mod ug_item_table;
+
+use crate::item_name::ItemNameTable;
+use crate::ug_item_table::UgItemTable;
 use bdsp_dig_generator::xorshift::XorShift;
 use bdsp_dig_generator::{run_results, Version};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+
+const TYPES_EN: &str = include_str!("../types_en.txt");
+const UG_ITEM_TABLE_RAW: &str = include_str!("../UgItemTable.json");
+const ITEM_NAME_RAW: &str = include_str!("../english_ss_itemname.json");
+const UG_ITEM_NAME_RAW: &str = include_str!("../english_dp_underground_name.json");
+
+fn load_string_list(list: &str) -> Vec<&str> {
+    list.split('\n')
+        .map(|s| {
+            if s.is_empty() {
+                s
+            } else if s.as_bytes()[s.len() - 1] == b'\r' {
+                &s[..(s.len() - 1)]
+            } else {
+                s
+            }
+        })
+        .collect()
+}
 
 #[derive(Parser)]
 struct Cli {
+    #[clap(value_enum)]
+    version: GameVersion,
     s0: String,
     s1: String,
     s2: String,
@@ -30,7 +56,27 @@ enum Subcommands {
     },
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum GameVersion {
+    BD,
+    SP,
+}
+
+impl From<GameVersion> for Version {
+    fn from(gv: GameVersion) -> Self {
+        match gv {
+            GameVersion::BD => Version::BD,
+            GameVersion::SP => Version::SP,
+        }
+    }
+}
+
 fn main() {
+    let types = load_string_list(TYPES_EN);
+    let ug_item_table = serde_json::from_str::<UgItemTable>(UG_ITEM_TABLE_RAW).unwrap();
+    let item_name = serde_json::from_str::<ItemNameTable>(ITEM_NAME_RAW).unwrap();
+    let item_name_ug = serde_json::from_str::<ItemNameTable>(UG_ITEM_NAME_RAW).unwrap();
+
     let cli: Cli = Cli::parse();
     println!("Advances: {}", cli.advances);
     let s0 = u32::from_str_radix(&cli.s0, 16).unwrap();
@@ -49,7 +95,7 @@ fn main() {
     match cli.option {
         Subcommands::Map => {
             let result = run_results(
-                Version::BD,
+                cli.version.into(),
                 rng,
                 cli.diglett,
                 cli.sp_cleared,
@@ -63,19 +109,63 @@ fn main() {
             println!();
             let mut character = b'A';
             for item in &result.first().unwrap().0 {
-                println!(
-                    "{} - Item ID: {} @ ({},{})",
-                    char::from(character),
-                    item.0,
-                    item.1,
-                    item.2
-                );
+                if item.0 < 1000 {
+                    let item_id = ug_item_table
+                        .table
+                        .iter()
+                        .find(|i| i.ug_item_id == item.0 as i32)
+                        .unwrap();
+                    let item_name = if item_id.item_table_id == -1 {
+                        &item_name_ug
+                            .label_data_array
+                            .iter()
+                            .find(|f| f.label_index == item_id.ug_item_id)
+                            .unwrap()
+                            .word_data_array
+                            .first()
+                            .unwrap()
+                            .str
+                    } else {
+                        &item_name
+                            .label_data_array
+                            .iter()
+                            .find(|f| f.label_index == item_id.item_table_id)
+                            .unwrap()
+                            .word_data_array
+                            .first()
+                            .unwrap()
+                            .str
+                    };
+
+                    println!(
+                        "{} - Item ID: {} @ ({},{})",
+                        char::from(character),
+                        item_name,
+                        item.1,
+                        item.2
+                    );
+                } else {
+                    let id = (item.0 % 1000) / 10;
+                    let box_type = match item.0 % 10 {
+                        1 => "Pretty",
+                        _ => "Gorgeous",
+                    };
+                    println!(
+                        "{} - {} Stone Box: {} @ ({},{})",
+                        char::from(character),
+                        box_type,
+                        types[id as usize],
+                        item.1,
+                        item.2
+                    );
+                }
+
                 character += 1;
             }
         }
         Subcommands::Results { item_id } => {
             let results = run_results(
-                Version::BD,
+                cli.version.into(),
                 rng,
                 cli.diglett,
                 cli.sp_cleared,
@@ -91,7 +181,34 @@ fn main() {
                 }
                 println!("Advances: {i}");
                 for item in result {
-                    println!("Item ID: {} @ ({},{})", item.0, item.1, item.2);
+                    let item_id = ug_item_table
+                        .table
+                        .iter()
+                        .find(|i| i.ug_item_id == item.0 as i32)
+                        .unwrap();
+                    let item_name = if item_id.item_table_id == -1 {
+                        &item_name_ug
+                            .label_data_array
+                            .iter()
+                            .find(|f| f.label_index == item_id.ug_item_id)
+                            .unwrap()
+                            .word_data_array
+                            .first()
+                            .unwrap()
+                            .str
+                    } else {
+                        &item_name
+                            .label_data_array
+                            .iter()
+                            .find(|f| f.label_index == item_id.item_table_id)
+                            .unwrap()
+                            .word_data_array
+                            .first()
+                            .unwrap()
+                            .str
+                    };
+
+                    println!("Item: {} @ ({},{})", item_name, item.1, item.2);
                 }
                 println!()
             }
